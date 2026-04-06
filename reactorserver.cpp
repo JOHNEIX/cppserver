@@ -70,9 +70,9 @@ void handle_client(int client_fd,int epoll_fd){
         send(client_fd,buffer,bytes_read,0);
 
         struct epoll_event ev;
-        ev.events = EPOLLIN | EPOLLONESHOT; // 建议加上 ONESHOT
+        ev.events = EPOLLIN | EPOLLONESHOT; //ONESHOT,触发时屏蔽
         ev.data.fd = client_fd;
-        epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client_fd, &ev);
+        epoll_ctl(epoll_fd, EPOLL_CTL_MOD, client_fd, &ev);//重新装载
     }
     else{
             std::cout << "客户端 FD: " << client_fd << " 已断开。" << std::endl;
@@ -109,20 +109,20 @@ int main(){
         std::cout<<nfds<<"个动静"<<std::endl;
 
         for(int i=0;i<nfds;i++){
-            if(events[i].data.fd==server_fd){
+            int fd=events[i].data.fd;
+            if(fd==server_fd){
                 sockaddr_in client_addr;
                 socklen_t addr_len=sizeof(client_addr);
                 int client_fd=accept(server_fd,(struct sockaddr*)&client_addr,&addr_len);
                 std::cout << "主线程：接受了新连接 FD: " << client_fd<< std::endl;
 
-                event.events=EPOLLIN;
-                event.data.fd=client_fd;
-                epoll_ctl(epoll_fd,EPOLL_CTL_ADD,client_fd,&event);
+                struct epoll_event ev;
+                ev.events=EPOLLIN|EPOLLONESHOT;
+                ev.data.fd=client_fd;
+                epoll_ctl(epoll_fd,EPOLL_CTL_ADD,client_fd,&ev);
             }
             else{
-                int client_fd=events[i].data.fd;
-                epoll_ctl(epoll_fd,EPOLL_CTL_DEL,client_fd,nullptr);
-                pool.enqueue([client_fd,epoll_fd]{handle_client(client_fd,epoll_fd);});
+                pool.enqueue([fd,epoll_fd]{handle_client(fd,epoll_fd);});
             }
         }
     }
