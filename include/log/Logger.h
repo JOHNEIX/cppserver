@@ -1,3 +1,5 @@
+#ifndef LOGGER_H
+#define LOGGER_H
 #pragma once
 #include<string>
 #include<mutex>
@@ -18,3 +20,5 @@ private:
 
 #define LOG_INFO(fmt, ...) Logger::getInstance().log("INFO", __FILE__, __LINE__, fmt, ##__VA_ARGS__)
 #define LOG_ERROR(fmt,...) Logger::getInstance().log("ERROR", __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+
+#endif
