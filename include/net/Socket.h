@@ -17,6 +17,9 @@ public:
     int get_fd() const;
 
     bool is_valid(){ return is_valid_; }
+
+    Socket(const Socket&) = delete;  // 禁止拷贝
+    Socket& operator=(const Socket&) = delete;  // 禁止赋值
 private:
     int fd_;
     sockaddr_in addr_;

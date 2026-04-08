@@ -1,19 +1,11 @@
-#include <iostream>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <unistd.h>
-#include <cstring>
-#include <thread>
-#include <vector>
-#include <queue>
-#include <mutex>
-#include <condition_variable>
-#include <functional>
-#include <sys/epoll.h>
+#include "net/EventLoop.h"
+#include "net/Channel.h"
 #include "log/Logger.h"
 #include "thread/ThreadPool.h"
 #include "net/Socket.h"
+#include "net/Acceptor.h"
 #include "net/Epoll.h"
+#include <unistd.h>
 
 void handle_client(int client_fd,int epoll_fd){
     //std::cout<<"线程["<<std::this_thread::get_id()<<"]开始处理fd:"<<client_fd<<std::endl;
@@ -51,51 +43,17 @@ void handle_client(int client_fd,int epoll_fd){
 
 int main(){
     LOG_INFO("服务器启动");
-    Socket sock;
-    if(!sock.is_valid()) return 1; 
-
-    if(!sock.bind_listen(8080)) return 1;
-
 
     //std::cout << "Server 正在 8080 端口等待连接..." << std::endl;
 
-    //创建epoll
-    Epoll epoll;
-    if(!epoll.is_valid()){
-        return 1;
-    }
-    //监听fd加入epoll
-    if(!epoll.add_fd(sock.get_fd(),EPOLLIN)){
-         LOG_ERROR("epoll_ctl加入服务端fd失败");
-         return 1;
-    }
-    
-    struct epoll_event events[1024];
-
+    // 2. 创建反应堆
+    EventLoop loop;
     Threadpool pool(2);
 
-    while(true){
-        int nfds=epoll.wait(events,1024);
-        //std::cout<<nfds<<"个动静"<<std::endl;
-        if(nfds<0){
-            LOG_ERROR("epoll wait 失败");
-            break;
-        }
-        for(int i=0;i<nfds;i++){
-            int fd=events[i].data.fd;
-            if(fd==sock.get_fd()){
-            int fd=events[i].data.fd;
-            if(fd==sock.get_fd()){
-                int client_fd=sock.accept();
-                epoll.add_fd(client_fd,EPOLLIN | EPOLLONESHOT);
-            }
-            }
-            else{
-                int epoll_fd=epoll.get_fd();
-                pool.enqueue([fd,epoll_fd]{handle_client(fd,epoll_fd);});
-            }
-        }
-    }
+    Acceptor acceptor(&loop, 8080, &pool);
+
+    loop.loop();
+
 
     return 0;
 }
