@@ -1,7 +1,6 @@
 #include "net/Acceptor.h"
 #include "log/Logger.h"
 #include <unistd.h>
-#include <sys/epoll.h>
 
 Acceptor::Acceptor(EventLoop* loop, int port, Threadpool* pool)
     : loop_(loop),
@@ -9,8 +8,7 @@ Acceptor::Acceptor(EventLoop* loop, int port, Threadpool* pool)
 {
     //绑定+监听
     if (!listen_sock_.bind_listen(port)) {
-        LOG_ERROR("端口绑定失败，服务器退出！");
-        exit(1); // 直接终止进程
+        exit(1);
     }
     // 用监听Socket的fd创建Channel
     accept_channel_ = Channel(loop, listen_sock_.get_fd());
@@ -36,32 +34,38 @@ void Acceptor::handle_accept() {
 
     LOG_INFO("新客户端连接,FD %d", client_fd);
 
-    // 创建客户端Channel
-    Channel* client_ch = new Channel(loop_, client_fd);
-    int epoll_fd = loop_->fd();
+    // 创建客户端Channel，用 shared_ptr 管理生命周期
+    auto client_ch = std::make_shared<Channel>(loop_, client_fd);
+    // closed 标志防止多个线程任务重复关闭同一 fd
+    auto closed = std::make_shared<std::atomic<bool>>(false);
 
     // 绑定回调，提交到线程池
     client_ch->set_read_callback([=]() {
         pool_->enqueue([=]() {
+            if (closed->load()) return;
+
             char buffer[1024] = {0};
             ssize_t bytes_read = read(client_fd, buffer, 1024);
 
             if (bytes_read > 0) {
                 // 回声回写
                 send(client_fd, buffer, bytes_read, 0);
-
                 // 重置 EPOLLONESHOT
-                epoll_event ev;
-                ev.events = EPOLLIN | EPOLLONESHOT;
-                ev.data.ptr = client_ch;
-                epoll_ctl(epoll_fd, EPOLL_CTL_MOD, client_fd, &ev);
-            } else {
-                // 关闭连接
+                client_ch->enable_read(true);
+            } else if (bytes_read == 0) {
+                LOG_INFO("客户端 FD %d 断开连接", client_fd);
+                closed->store(true);
                 close(client_fd);
-                delete client_ch;
+            } else {
+                LOG_ERROR("读取 FD %d 数据失败", client_fd);
+                closed->store(true);
+                loop_->remove(client_ch.get());
+                close(client_fd);
             }
         });
     });
 
-    client_ch->enable_read();
+    client_ch->enable_read(true);
+
+
 }

@@ -34,7 +34,7 @@ bool Epoll::add_channel(Channel* ch, uint32_t events) {
     return true;
 }
 //修改，主要是返回客户端
-//目前因为没修改handle_client所以没用上
+
 bool Epoll::mod_channel(Channel* ch, uint32_t events) {
     if (!is_valid_) return false;
     int fd=ch->fd();

@@ -17,7 +17,7 @@ public:
 
     void handle_event();
     void set_read_callback(std::function<void()> cb) { read_cb_ = std::move(cb);  }
-    void enable_read();
+    void enable_read(bool oneshot=false);
 
     int fd() const{ return fd_;}
     uint32_t events() const {return events_;}

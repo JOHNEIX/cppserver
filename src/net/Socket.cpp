@@ -30,7 +30,7 @@ bool Socket::bind_listen(int port,int numbers){
     addr_.sin_port=htons(port);
 
     if(bind(fd_,(struct sockaddr*)&addr_,sizeof(addr_))==-1){
-        LOG_ERROR("绑定端口8080失败");
+        LOG_ERROR("绑定端口 %d 失败", port);
         close(fd_);
         return false;
     }   

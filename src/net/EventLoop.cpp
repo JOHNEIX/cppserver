@@ -28,9 +28,14 @@ void EventLoop::loop(){
 
 }
 
-void EventLoop::update(Channel* ch){
+void EventLoop::update(Channel* ch) {
     if (!ch) return;
-    epoll_->add_channel(ch,ch->events());
+    if (ch->is_added()) {
+        epoll_->mod_channel(ch, ch->events());
+    } else {
+        epoll_->add_channel(ch, ch->events());
+        ch->set_added(true);
+    }
 }
 
 void EventLoop::remove(Channel* ch){
