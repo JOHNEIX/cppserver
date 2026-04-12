@@ -11,7 +11,7 @@ int main(){
 
     // 2. 创建反应堆
     EventLoop loop;
-    Threadpool pool(2);
+    Threadpool pool(16);
 
     Acceptor acceptor(&loop, 8080, &pool);
 

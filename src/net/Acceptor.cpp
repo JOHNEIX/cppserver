@@ -55,6 +55,7 @@ void Acceptor::handle_accept() {
             } else if (bytes_read == 0) {
                 LOG_INFO("客户端 FD %d 断开连接", client_fd);
                 closed->store(true);
+                loop_->remove(client_ch.get());
                 close(client_fd);
             } else {
                 LOG_ERROR("读取 FD %d 数据失败", client_fd);
